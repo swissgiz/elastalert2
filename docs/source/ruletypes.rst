@@ -2882,6 +2882,10 @@ Optional:
 
 ``opsgenie_entity``: Set the OpsGenie entity. Can be formatted with fields from the first match e.g "{host_name}"
 
+``opsgenie_heartbeat_name``: The OpsGenie heartbeat name to ping. If specified, the alert will become an heartbeat and be sent to the heartbeat API endpoint of opsgenie
+
+``opsgenie_heartbeat_addr``: The OpsGenie heartbeat URL to to connect against, default is ``https://api.opsgenie.com/v2/heartbeats``. If using the EU instance of Opsgenie, the URL needs to be ``https://api.eu.opsgenie.com/v2/heartbeats`` for requests to be successful.
+
 Example usage::
 
     opsgenie_details:
