@@ -1187,3 +1187,34 @@ def test_opsgenie_get_details2():
     actual = alert.get_details(match)
     excepted = {}
     assert excepted == actual
+
+
+def test_opsgenie_basic_heartbeat(caplog):
+    caplog.set_level(logging.INFO)
+    rule = {
+        'name': 'testOGheartbeat',
+        'opsgenie_key': 'ogkey',
+        'opsgenie_addr': 'https://api.opsgenie.com/v2/alerts',
+        'opsgenie_heartbeat_addr': 'https://api.opsgenie.com/v2/heartbeats',
+        'opsgenie_heartbeat_name': 'testHeartbeat',
+        'type': mock_rule()
+    }
+    with mock.patch('requests.get') as mock_get:
+        rep = requests
+        rep.status_code = 200
+        mock_get.return_value = rep
+
+        alert = OpsGenieAlerter(rule)
+        alert.alert([{'@timestamp': '2014-10-31T00:00:00'}])
+        print(("mock_get: {0}".format(mock_get._mock_call_args_list)))
+        mcal = mock_get._mock_call_args_list
+
+        print(('mcal: {0}'.format(mcal[0])))
+        assert mcal[0][0][0] == ('https://api.opsgenie.com/v2/heartbeats/testHeartbeat/ping')
+
+        assert mock_get.called
+
+        assert mcal[0][1]['headers']['Authorization'] == 'GenieKey ogkey'
+        user, level, message = caplog.record_tuples[0]
+        assert "Error response from https://api.opsgenie.com/v2/heartbeats \n API Response: <MagicMock name='post()' id=" not in message
+        assert ('elastalert', logging.INFO, 'Heartbeat sent to OpsGenie') == caplog.record_tuples[0]
