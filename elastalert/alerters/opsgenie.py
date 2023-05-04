@@ -33,6 +33,8 @@ class OpsGenieAlerter(Alerter):
         self.opsgenie_details = self.rule.get('opsgenie_details', {})
         self.entity = self.rule.get('opsgenie_entity', None)
         self.source = self.rule.get('opsgenie_source', 'ElastAlert')
+        self.heartbeat_name = self.rule.get('opsgenie_heartbeat_name', None)
+        self.heartbeat_addr = self.rule.get('opsgenie_heartbeat_addr', 'https://api.opsgenie.com/v2/heartbeats')
 
     def _parse_responders(self, responders, responder_args, matches, default_responders):
         if responder_args:
@@ -116,17 +118,31 @@ class OpsGenieAlerter(Alerter):
         # set https proxy, if it was provided
         proxies = {'https': self.opsgenie_proxy} if self.opsgenie_proxy else None
 
-        try:
-            r = requests.post(self.to_addr, json=post, headers=headers, proxies=proxies)
+        if self.heartbeat_name:
+            try:
+                self.heartbeat_addr += "/" + self.heartbeat_name + "/ping"
+                r = requests.get(self.heartbeat_addr, headers=headers, proxies=proxies)
 
-            elastalert_logger.debug('request response: {0}'.format(r))
-            if r.status_code != 202:
-                elastalert_logger.info("Error response from {0} \n "
-                                       "API Response: {1}".format(self.to_addr, r))
-                r.raise_for_status()
-            elastalert_logger.info("Alert sent to OpsGenie")
-        except Exception as err:
-            raise EAException("Error sending alert: {0}".format(err))
+                elastalert_logger.debug('request response: {0}'.format(r))
+                if r.status_code != 200:
+                    elastalert_logger.info("Error response from {0} \n "
+                                           "API Response: {1}".format(self.heartbeat_addr, r))
+                    r.raise_for_status()
+                elastalert_logger.info("Heartbeat sent to OpsGenie")
+            except Exception as err:
+                raise EAException("Error sending heartbeat: {0}".format(err))
+        else:
+            try:
+                r = requests.post(self.to_addr, json=post, headers=headers, proxies=proxies)
+
+                elastalert_logger.debug('request response: {0}'.format(r))
+                if r.status_code != 202:
+                    elastalert_logger.info("Error response from {0} \n "
+                                           "API Response: {1}".format(self.to_addr, r))
+                    r.raise_for_status()
+                elastalert_logger.info("Alert sent to OpsGenie")
+            except Exception as err:
+                raise EAException("Error sending alert: {0}".format(err))
 
     def create_default_title(self, matches):
         subject = 'ElastAlert: %s' % (self.rule['name'])
